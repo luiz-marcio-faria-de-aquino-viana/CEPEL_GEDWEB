@@ -188,77 +188,7 @@ PROJETOS:
 		<CEPEL_UsuarioTelefone>21999837207</CEPEL_UsuarioTelefone>
 	</CEPEL_UsuarioDownload>
 </CEPEL_Metadados>
-<CEPEL_Data><![CDATA[
-TITLE	">>>>>SPEED>RACER> - FUNDAMENTOS DE COMPUTADORES DIGITAIS"
-
-		ASEG
-		.Z80
-
-;
-; --- declaracao das constantes
-;
-
-BDOS		EQU	005
-
-INICPM		EQU	00h
-RDKEY		EQU	06h
-PRNSTR		EQU	09h
-
-NULL		EQU	00h
-
-;
-; --- rotina de abertura e inicializacao
-;
-
-		ORG	0100h
-
-Inicio:		LD	SP, stack + 255
-		LD	C, PRNSTR
-		LD	DE, dispClr
-		CALL	BDOS
-		LD	DE, dispLogo
-		CALL	BDOS
-		LD	DE, dispMess
-		CALL	BDOS 
-Loop1:		CALL	GetKey
-		CP	NULL
-		JR	Z, Loop1
-
-		CALL	IniScore
-		CALL	StartVar
-		CALL	StartScr
-		CALL	PutGrid
-		CALL	PutCar
-
-;
-; --- declaracao da area de variaveis HEAP do sistema
-;
-
-varCar:		DS	1
-varScore:	DS	3
-varGrid:	DS	42
-varRn1:		DB	00h, 00h
-varCrash:	DS	1
-
-;
-; --- declaracao da area de buffer do display
-;
-
-		ORG	0E00h
-
-buffDisp:	DS	256
-
-;
-; --- declaracao da area de stack
-;
-
-		ORG	0F00h
-
-stack:		DS	256
-
-		END
-
-]]></CEPEL_Data>
+<CEPEL_Data><![CDATA[ ]]></CEPEL_Data>
 </CEPEL_DocumentoCompleto>
 <CEPEL_Signature><![CDATA[356253649ld]]></CEPEL_Signature>
 </CEPEL_GEDWEB>

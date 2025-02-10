@@ -230,10 +230,6 @@ Loop1:		CALL	GetKey
 		CALL	PutGrid
 		CALL	PutCar
 
-		:
-		:
-		:
-
 ;
 ; --- declaracao da area de variaveis HEAP do sistema
 ;

@@ -1,0 +1,535 @@
+TITLE	">>>>>SPEED>RACER> - FUNDAMENTOS DE COMPUTADORES DIGITAIS"
+
+		ASEG
+		.Z80
+
+;
+; --- declaracao das constantes
+;
+
+BDOS		EQU	005
+
+INICPM		EQU	00h
+RDKEY		EQU	06h
+PRNSTR		EQU	09h
+
+NULL		EQU	00h
+
+;
+; --- rotina de abertura e inicializacao
+;
+
+		ORG	0100h
+
+Inicio:		LD	SP, stack + 255
+		LD	C, PRNSTR
+		LD	DE, dispClr
+		CALL	BDOS
+		LD	DE, dispLogo
+		CALL	BDOS
+		LD	DE, dispMess
+		CALL	BDOS 
+Loop1:		CALL	GetKey
+		CP	NULL
+		JR	Z, Loop1
+
+		CALL	IniScore
+		CALL	StartVar
+		CALL	StartScr
+		CALL	PutGrid
+		CALL	PutCar
+
+Loop2:		CALL	MovGrid
+		CALL	MovCar
+		CALL	PutGrid
+		CALL	PutCar
+		CALL	VerCrash
+		CALL	MovScore
+		LD	A, (varCrash)
+		CP	0FFh
+		JP	NZ, Loop2
+
+		LD	C, PRNSTR
+		LD	DE, dispOver
+		CALL	BDOS
+		LD	DE, dispLogo
+		CALL	BDOS
+
+		LD	C, INICPM
+		CALL	BDOS
+
+;
+; --- rotina de verificacao de crash
+;
+
+VerCrash:	LD	IX, varGrid
+		LD	IY, varCar
+		LD	A, (IY + 0)
+		ADD	A, 02h
+		DAA
+		LD	B, A
+
+		LD	A, (IX + 14)
+		ADD	A, 04h
+		DAA
+		CP	(IY + 0)
+		JR	Z, Crash
+		LD	A, (IX + 15)
+		ADD	A, 01h
+		DAA
+		CP	B
+		JR	Z, Crash
+
+		LD	A, (IX + 18)
+		ADD	A, 04h
+		DAA
+		CP	(IY + 0)
+		JR	Z, Crash
+		LD	A, (IX + 19)
+		ADD	A, 01h
+		DAA
+		CP	B
+		JR	Z, Crash
+		RET
+
+Crash:		LD	A, 0FFh
+		LD	(varCrash), A
+		RET
+
+;
+; --- rotina de inicializacao das variaveis
+;
+
+StartVar:	LD	A, 39h
+		LD	(varCar), A
+		LD	IX, varScore
+		LD	(IX + 0), 00h
+		LD	(IX + 1), 00h
+		LD	(IX + 2), 00h
+		LD	B, 22
+		LD	IX, varGrid
+VarLoop1:	LD	(IX + 0), 28h
+		LD	(IX + 1), 48h
+		INC	IX
+		INC	IX
+		DJNZ	VarLoop1
+		LD	A, 00h
+		LD	(varCrash), A
+		RET
+
+;
+; --- rotina de movimentacao do carro
+;
+
+MovCar:		CALL	GetKey
+		CP	','
+		JR	Z, CarLeft
+		CP	'.'
+		JR	Z, CarRight
+		RET
+
+CarLeft:	CALL	PutClr
+		LD	A, (varCar)
+		SUB	01h
+		DAA
+		LD	(varCar), A
+		CALL	PutCar
+		RET
+
+CarRight:	CALL	PutClr
+		LD	A, (varCar)
+		ADD	A, 01h
+		DAA
+		LD	(varCar), A
+		CALL	PutCar
+		RET
+
+;
+; --- rotina de impressao do carro
+;
+
+PutCar:		LD	B, 12h
+		LD	A, (varCar)
+		LD	C, A
+		LD	DE, dispCar
+		PUSH	BC
+		CALL	WriteXY
+		POP	BC
+		LD	B, 13h
+		LD	DE, dispCar + 4
+		PUSH	BC
+		CALL	WriteXY
+		POP	BC
+		LD	B, 14h
+		LD	DE, dispCar + 8
+		CALL	WriteXY
+		RET
+
+;
+; --- rotina de delecao do carro
+;
+
+PutClr:		LD	B, 12h
+		LD	A, (varCar)
+		LD	C, A
+		LD	DE, dispBlk
+		PUSH	BC
+		CALL	WriteXY
+		POP	BC
+		LD	B, 13h
+		LD	DE, dispBlk
+		PUSH	BC
+		CALL	WriteXY
+		POP	BC
+		LD	B, 14h
+		LD	DE, dispBlk
+		CALL	WriteXY
+		RET
+
+;
+; --- rotina de movimento do grid
+;
+
+MovGrid:	LD	B, 20
+		LD	IX, varGrid + 38
+MovLoop1:	LD	A, (IX + 0)
+		LD	(IX + 2), A
+		LD	A, (IX + 1)
+		LD	(IX + 3), A
+		DEC	IX
+		DEC	IX
+		DJNZ	MovLoop1
+
+		LD	IX, varGrid
+		CALL	Random
+		CP	40h
+		JP	M, MovLeft
+		CP	50h
+		JP	P, MovRight
+		RET
+
+MovLeft:	LD	A, (IX + 0)
+		CP	01h
+		RET	Z
+		SUB	01h
+		DAA
+		LD	(IX + 0), A
+		LD	A, (IX + 1)
+		SUB	01h
+		DAA
+		LD	(IX + 1), A
+		RET
+
+MovRight:	LD	A, (IX + 0)
+		CP	55h
+		RET	Z
+		ADD	A, 01h
+		DAA
+		LD	(IX + 0), A
+		LD	A, (IX + 1)
+		ADD	A, 01h
+		DAA
+		LD	(IX + 1), A
+		RET
+
+;
+; --- rotina geradora de numero randomico
+;
+
+Random:		LD	HL, (varRn1)
+		PUSH	HL
+		POP	DE
+		LD	B, 0FCh
+RnLoop:		ADD	HL, DE
+		DJNZ	RnLoop
+		LD	DE, 01h
+		ADD	HL, DE
+		LD	(varRn1), HL
+		LD	A, L
+		RET
+
+;
+; --- rotina de inicializacao da tela
+;
+
+StartScr:	LD	C, PRNSTR
+		LD	DE, dispClr
+		CALL	BDOS
+		LD	DE, dispScr
+		CALL	BDOS
+		RET
+
+;
+; --- rotina p/leitura do teclado sem buffer
+;
+
+GetKey:		LD	C, PRNSTR
+		LD	DE, dispKey
+		CALL	BDOS
+		LD	C, RDKEY
+		LD	E, 0FFh
+		CALL	BDOS
+		RET
+
+;
+; --- rotina p/apresentacao da pista
+;
+
+PutGrid:	LD	A, 04h
+		LD	IX, varGrid
+PutLoop1:	LD	B, A
+		LD	C, (IX + 0)
+		LD	DE, dispLeft
+		PUSH	AF
+		PUSH	IX
+		CALL	WriteXY
+		POP	IX
+		LD	C, (IX + 1)
+		LD	DE, dispRight
+		PUSH	IX
+		CALL	WriteXY
+		POP	IX
+		POP	AF
+		INC	IX
+		INC	IX
+		ADD	A, 01h
+		DAA
+		CP	25h
+		JR	NZ, PutLoop1
+		RET
+
+; --- rotina de inicializacao do score
+
+IniScore:	LD	IX, varScore
+		LD	IY, dispMiles
+		XOR	A
+		LD	(IX), A
+		LD	(IX + 1), A
+		LD	(IX + 2), A
+		LD	A, (IX)
+		CALL	Hex7h
+		LD	(IY + 12), B
+		LD	(IY + 13), C
+		LD	A, (IX + 1)
+		CALL	Hex7h
+		LD	(IY + 9), B
+		LD	(IY + 11), C
+		LD	A, (IX + 2)
+		CALL	Hex7h
+		LD	(IY + 7), B
+		LD	(IY + 8), C
+		LD	C, PRNSTR
+		LD	DE, dispMiles
+		CALL	BDOS
+		RET
+
+; --- rotina de incremento do score
+
+MovScore:	LD	IX, varScore
+		LD	IY, dispMiles
+		LD	A, (IX)
+		ADD	A, 05h
+		DAA
+		LD	(IX), A
+		CP	00h
+		JR	NZ, MScor1
+		LD	A, (IX + 1)
+		ADD	A, 01h
+		DAA
+		LD	(IX + 1), A
+		CP	00h
+		JR	NZ, MScor1
+		LD	A, (IX + 2)
+		ADD	A, 01h
+		DAA
+		LD	(IX + 2), A
+MScor1:		LD	A, (IX)
+		CALL	Hex7h
+		LD	(IY + 12), B
+		LD	(IY + 13), C
+		LD	A, (IX + 1)
+		CALL	Hex7h
+		LD	(IY + 9), B
+		LD	(IY + 11), C
+		LD	A, (IX + 2)
+		CALL	Hex7h
+		LD	(IY + 7), B
+		LD	(IY + 8), C
+		LD	C, PRNSTR
+		LD	DE, dispMiles
+		CALL	BDOS
+		RET
+
+;
+; --- rotina p/posicionar cursor no video e escrever string
+;
+
+WriteXY:	LD	IX, buffDisp
+		LD	A, 27
+		LD	(IX + 0), A
+		LD	A, '['
+		LD	(IX + 1), A
+		PUSH	BC
+		LD	A, B
+		CALL	Hex7h
+		LD	A, B
+		LD	(IX + 2), A
+		LD	A, C
+		LD	(IX + 3), A
+		POP	BC
+		LD	A, ';'
+		LD	(IX + 4), A
+		PUSH	BC
+		LD	A, C
+		CALL	Hex7h
+		LD	A, B
+		LD	(IX + 5), A
+		LD	A, C
+		LD	(IX + 6), A
+		POP	BC
+		LD	A, 'H'
+		LD	(IX + 7), A
+WrLoop1:	LD	A, (DE)
+		LD	(IX + 8), A
+		INC	IX
+		INC	DE
+		CP	'$'
+		JR	NZ, WrLoop1
+		LD	C, PRNSTR
+		LD	DE, buffDisp
+		CALL	BDOS
+		RET
+
+;
+; --- rotina de conversao BCD/ASCII
+;
+
+Hex7h:		LD	C, A
+		SRL	A
+		SRL	A
+		SRL	A
+		SRL	A
+		ADD	A, 30h
+		LD	B, A
+		LD	A, C
+		AND	00001111b
+		ADD	A, 30h
+		LD	C, A
+		RET
+
+;
+; --- declaracao de textos e constantes de controle da tela
+;
+
+dispClr:	DB	27, '[2J', '$'
+dispLogo:	DB	27, '[8;1H'
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 201, 205, 205, 205
+		DB	184, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 210, 32, 32, 32
+		DB	32, 201, 205, 205, 205, 184, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 186, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 186, 32, 32, 32, 32
+		DB	186, 32, 32, 32, 179, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 200, 205, 205, 205
+		DB	187, 32, 201, 205, 205, 205, 187, 32, 201, 205, 205, 205
+		DB	187, 32, 201, 205, 205, 205, 187, 32, 201, 205, 205, 205
+		DB	185, 32, 32, 32, 32, 204, 205, 205, 203, 190, 32, 201
+		DB	205, 205, 205, 187, 32, 201, 205, 205, 205, 184, 32, 201
+		DB	205, 205, 205, 187, 32, 210, 196, 196, 196, 191, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32
+
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 186
+		DB	32, 186, 32, 32, 32, 186, 32, 204, 205, 205, 205, 188
+		DB	32, 204, 205, 205, 205, 188, 32, 186, 32, 32, 32, 186
+		DB	32, 32, 32, 32, 186, 32, 32, 200, 187, 32, 204, 205
+		DB	205, 205, 185, 32, 186, 32, 32, 32, 32, 32, 204, 205
+		DB	205, 205, 188, 32, 186, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32
+
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 212, 205, 205, 205
+		DB	188, 32, 204, 205, 205, 205, 188, 32, 200, 205, 205, 205
+		DB	190, 32, 200, 205, 205, 205, 190, 32, 200, 205, 205, 205
+		DB	202, 190, 32, 32, 32, 208, 32, 32, 32, 211, 32, 208, 32
+		DB	32, 32, 208, 32, 200, 205, 205, 205, 190, 32, 200, 205
+		DB	205, 205, 190, 32, 208, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32
+
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 208, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+		DB	32, 32, 32, 32, 32, 32, 32, 32, 32, 32
+
+		DB	'$'
+
+dispBlk:	DB	32, 32, 32, '$'
+dispCar:	DB	195, 194, 180, '$'
+		DB	32, 197, 32, '$'
+		DB	215, 197, 215, '$'
+
+dispLeft:	DB	32, 176, 177, 178, 219, 32, '$'
+dispRight:	DB	32, 219, 178, 177, 176, 32, '$'
+
+dispMess:	DB	27, '[14;27H', '< PRESS ANY KEY TO BEGIN >', '$'
+dispOver:	DB	27, '[14;34H', '< GAME OVER >', '$'
+dispScr:	DB	27, '[H'
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205
+
+		DB	'  >>>>>SPEED>RACER>                                            MILES = 000', 39, '000  '
+
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205, 205, 205, 205, 205, 205, 205, 205, 205
+		DB	205, 205, 205
+
+		DB	'$'
+
+dispKey:	DB	27, '[25;80H', '$'
+dispMiles:	DB	27, '[2;72H', '000', 39, '000', '$'
+
+;
+; --- declaracao da area de variaveis HEAP do sistema
+;
+
+varCar:		DS	1
+varScore:	DS	3
+varGrid:	DS	42
+varRn1:		DB	00h, 00h
+varCrash:	DS	1
+
+;
+; --- declaracao da area de buffer do display
+;
+
+		ORG	0E00h
+
+buffDisp:	DS	256
+
+;
+; --- declaracao da area de stack
+;
+
+		ORG	0F00h
+
+stack:		DS	256
+
+		END
